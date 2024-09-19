@@ -5,9 +5,9 @@ set_xmakever("2.8.2")
 includes("lib/commonlibsse-ng")
 
 -- set project
-set_project("commonlibsse-ng-template")
-set_version("0.0.0")
-set_license("GPL-3.0")
+set_project("imgui-skyrim")
+set_version("1.0.0")
+set_license("MIT")
 
 -- set defaults
 set_languages("c++23")
@@ -24,16 +24,42 @@ set_policy("package.requires_lock", true)
 -- set configs
 set_config("skyrim_vr", false)
 
+-- set requires
+add_requires("spdlog", { configs = { header_only = false, wchar = true, std_format = true } })
+
+target("imgui")
+    set_kind("shared")
+    add_rules("utils.symbols.export_all")
+    
+    -- add src files
+    add_files("lib/imgui/*.cpp")
+    add_headerfiles("lib/imgui/*.h")
+    add_includedirs("lib/imgui/", { public = true })
+    
+    add_files(
+        "lib/imgui/backends/imgui_impl_dx11.cpp",
+        "lib/imgui/backends/imgui_impl_win32.cpp")
+    add_includedirs("lib/imgui/backends/")
+
+
 -- targets
-target("commonlibsse-ng-template")
+target("imgui-skyrim")
+    set_kind("shared")
+
+    add_cxxflags(
+        "cl::/wd4200", -- zero-sized array in struct/union
+        "cl::/wd4201"  -- nameless struct/union
+    )
+
     -- add dependencies to target
     add_deps("commonlibsse-ng")
+    add_deps("imgui")
 
     -- add commonlibsse-ng plugin
     add_rules("commonlibsse-ng.plugin", {
-        name = "commonlibsse-ng-template",
-        author = "qudix",
-        description = "SKSE64 plugin template using CommonLibSSE-NG"
+        name = "imgui-skyrim",
+        author = "FiveLimbedCat",
+        description = "Unified imgui backend for skyrim."
     })
 
     -- add src files
@@ -41,22 +67,3 @@ target("commonlibsse-ng-template")
     add_headerfiles("src/**.h")
     add_includedirs("src")
     set_pcxxheader("src/pch.h")
-
-    -- copy build files to MODS or GAME paths (remove this if not needed)
-    after_build(function(target)
-        local copy = function(env, ext)
-            for _, env in pairs(env:split(";")) do
-                if os.exists(env) then
-                    local plugins = path.join(env, ext, "SKSE/Plugins")
-                    os.mkdir(plugins)
-                    os.trycp(target:targetfile(), plugins)
-                    os.trycp(target:symbolfile(), plugins)
-                end
-            end
-        end
-        if os.getenv("XSE_TES5_MODS_PATH") then
-            copy(os.getenv("XSE_TES5_MODS_PATH"), target:name())
-        elseif os.getenv("XSE_TES5_GAME_PATH") then
-            copy(os.getenv("XSE_TES5_GAME_PATH"), "Data")
-        end
-    end)
