@@ -1,5 +1,6 @@
 #include "imgui_skyrim.h"
 
+#include "ui.h"
 
 namespace ImGui
 {
@@ -8,10 +9,15 @@ namespace Skyrim
 
 ImGuiContext* GetContext()
 {
-    return nullptr;
+    return UI::GetSingleton()->GetContext();
 }
 
-void RegisterMenuDrawFunc(std::function<void()> func)
+APIResult RegisterMenuDrawFunc(std::string_view name, std::function<bool()> func)
+{
+    return UI::GetSingleton()->RegisterMenuDrawFunc(name, func);
+}
+
+void AddPopup(std::string_view)
 {
 }
 

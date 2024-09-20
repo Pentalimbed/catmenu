@@ -1,3 +1,7 @@
+// Copy this file and put alongside imgui headers.
+
+#pragma once
+
 #include <functional>
 
 #include "imgui.h"
@@ -9,8 +13,16 @@ namespace ImGui
 namespace Skyrim
 {
 
+enum class APIResult : uint8_t
+{
+    OK,
+    AlreadyRegistered,
+    NotRegistered,
+};
+
 DLL_EXPORT ImGuiContext* GetContext();
-DLL_EXPORT void          RegisterMenuDrawFunc(std::function<void()> func);
+DLL_EXPORT APIResult     RegisterMenuDrawFunc(std::string_view name, std::function<bool()> func);
+DLL_EXPORT void          AddPopup(std::string_view msg);
 
 }; // namespace Skyrim
 }; // namespace ImGui

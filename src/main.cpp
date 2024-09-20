@@ -1,9 +1,11 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
+#include "render.h"
+
 void InitLogging()
 {
-    auto path = logs::log_directory();
+    auto path = logger::log_directory();
     if (!path)
         return;
 
@@ -27,11 +29,13 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
     InitLogging();
 
     const auto plugin = SKSE::PluginDeclaration::GetSingleton();
-    logs::info("{} v{} is loading...", plugin->GetName(), plugin->GetVersion());
+    logger::info("{} v{} is loading...", plugin->GetName(), plugin->GetVersion());
 
     SKSE::Init(a_skse);
 
-    logs::info("{} loaded.", plugin->GetName());
+    ImGui::Skyrim::D3DInitHook::install();
+
+    logger::info("{} loaded.", plugin->GetName());
 
     return true;
 }
