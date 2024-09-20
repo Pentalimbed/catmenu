@@ -8,8 +8,7 @@
 
 const ImGuiKey VirtualKeyToImGuiKey(WPARAM vkKey)
 {
-    switch (vkKey)
-    {
+    switch (vkKey) {
         case VK_TAB:
             return ImGuiKey_Tab;
         case VK_LEFT:
@@ -225,8 +224,7 @@ const ImGuiKey VirtualKeyToImGuiKey(WPARAM vkKey)
 
 const uint32_t DIKToVK(uint32_t DIK)
 {
-    switch (DIK)
-    {
+    switch (DIK) {
         case DIK_LEFTARROW:
             return VK_LEFT;
         case DIK_RIGHTARROW:
@@ -286,65 +284,56 @@ const uint32_t DIKToVK(uint32_t DIK)
     }
 }
 
-RE::BSEventNotifyControl ImGui::Skyrim::InputListener::ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>* a_eventSource)
+namespace ImGui
+{
+namespace Skyrim
+{
+
+RE::BSEventNotifyControl InputListener::ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>* a_eventSource)
 {
     if (!a_event || !a_eventSource)
         return RE::BSEventNotifyControl::kContinue;
 
     ImGuiIO& io = ImGui::GetIO();
 
-    for (auto event = *a_event; event; event = event->next)
-    {
-        if (event->eventType == RE::INPUT_EVENT_TYPE::kChar)
-        {
+    for (auto event = *a_event; event; event = event->next) {
+        if (event->eventType == RE::INPUT_EVENT_TYPE::kChar) {
             io.AddInputCharacter(event->AsCharEvent()->keyCode);
             continue;
-        }
-        else if (event->eventType == RE::INPUT_EVENT_TYPE::kButton)
-        {
+        } else if (event->eventType == RE::INPUT_EVENT_TYPE::kButton) {
             const auto button = static_cast<RE::ButtonEvent*>(event);
             if (!button || (button->IsPressed() && !button->IsDown()))
                 continue;
 
             auto keyCode = button->GetIDCode();
 
-            switch (button->device.get())
-            {
-                case RE::INPUT_DEVICE::kMouse:
-                    if (keyCode > 7) // middle scroll
-                        io.AddMouseWheelEvent(0, button->Value() * (keyCode == 8 ? 1 : -1));
-                    else
-                    {
-                        if (keyCode > 5)
-                            keyCode = 5;
-                        io.AddMouseButtonEvent(keyCode, button->IsPressed());
-                    }
-                    break;
+            if (button->device.get() == RE::INPUT_DEVICE::kMouse) {
+                if (keyCode > 7) // middle scroll
+                    io.AddMouseWheelEvent(0, button->Value() * (keyCode == 8 ? 1 : -1));
+                else {
+                    if (keyCode > 5)
+                        keyCode = 5;
+                    io.AddMouseButtonEvent(keyCode, button->IsPressed());
+                }
+            } else if (button->device.get() == RE::INPUT_DEVICE::kKeyboard) {
+                uint32_t key = DIKToVK(keyCode);
+                if (key == keyCode)
+                    key = MapVirtualKeyEx(keyCode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
+                io.AddKeyEvent(VirtualKeyToImGuiKey(key), button->IsPressed());
 
-                case RE::INPUT_DEVICE::kKeyboard:
-                    uint32_t key = DIKToVK(keyCode);
-                    if (key == keyCode)
-                        key = MapVirtualKeyEx(keyCode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
-                    io.AddKeyEvent(VirtualKeyToImGuiKey(key), button->IsPressed());
-
-                    if (key == VK_LCONTROL || key == VK_RCONTROL)
-                        io.AddKeyEvent(ImGuiMod_Ctrl, button->IsPressed());
-                    else if (key == VK_LSHIFT || key == VK_RSHIFT)
-                        io.AddKeyEvent(ImGuiMod_Shift, button->IsPressed());
-                    else if (key == VK_LMENU || key == VK_RMENU)
-                        io.AddKeyEvent(ImGuiMod_Alt, button->IsPressed());
-                    break;
-
-                case RE::INPUT_DEVICE::kGamepad:
-                    // not implemented yet
-                    // key = GetGamepadIndex((RE::BSWin32GamepadDevice::Key)key);
-                    break;
-
-                default:
-                    continue;
+                if (key == VK_LCONTROL || key == VK_RCONTROL)
+                    io.AddKeyEvent(ImGuiMod_Ctrl, button->IsPressed());
+                else if (key == VK_LSHIFT || key == VK_RSHIFT)
+                    io.AddKeyEvent(ImGuiMod_Shift, button->IsPressed());
+                else if (key == VK_LMENU || key == VK_RMENU)
+                    io.AddKeyEvent(ImGuiMod_Alt, button->IsPressed());
+                break;
             }
         }
     }
 
     return RE::BSEventNotifyControl::kContinue;
 }
+
+} // namespace Skyrim
+} // namespace ImGui

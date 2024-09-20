@@ -1,6 +1,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
+#include "ui.h"
 #include "render.h"
 #include "input.h"
 
@@ -25,14 +26,14 @@ void InitLogging()
     spdlog::set_pattern("[%^%L%$] %v");
 }
 
-void processMessage(SKSE::MessagingInterface::Message* a_msg)
+void ProcessMessage(SKSE::MessagingInterface::Message* a_msg)
 {
-    switch (a_msg->type)
-    {
+    switch (a_msg->type) {
         case SKSE::MessagingInterface::kDataLoaded:
             logger::info("Game: data loaded.");
             RE::BSInputDeviceManager::GetSingleton()->AddEventSink(ImGui::Skyrim::InputListener::GetSingleton());
             logger::info("Input listener registered.");
+            ImGui::Skyrim::UI::GetSingleton()->RegisterMenuDrawFunc("Demo Window", []() { ImGui::ShowDemoWindow(); return true; });
             break;
         default:
             break;
@@ -51,7 +52,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
     ImGui::Skyrim::D3DInitHook::install();
 
     auto messaging = SKSE::GetMessagingInterface();
-    if (!messaging->RegisterListener("SKSE", processMessage))
+    if (!messaging->RegisterListener("SKSE", ProcessMessage))
         return false;
 
     logger::info("{} loaded.", plugin->GetName());

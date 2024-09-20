@@ -12,13 +12,19 @@ ImGuiContext* GetContext()
     return UI::GetSingleton()->GetContext();
 }
 
-APIResult RegisterMenuDrawFunc(std::string_view name, std::function<bool()> func)
+APIResult RegisterOverlayDrawFunc(const RE::BSString& name, bool (*func)())
+{
+    return UI::GetSingleton()->RegisterOverlayDrawFunc(name, func);
+}
+
+APIResult RegisterMenuDrawFunc(const RE::BSString& name, bool (*func)())
 {
     return UI::GetSingleton()->RegisterMenuDrawFunc(name, func);
 }
 
-void AddPopup(std::string_view)
+void InsertNotification(const ImGuiToast& toast)
 {
+    ImGui::InsertNotification(toast);
 }
 
 } // namespace Skyrim

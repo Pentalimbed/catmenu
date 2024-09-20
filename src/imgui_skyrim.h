@@ -4,7 +4,8 @@
 
 #include <functional>
 
-#include "imgui.h"
+#include <imgui.h>
+#include <ImGuiNotify.hpp>
 
 #define DLL_EXPORT __declspec(dllexport)
 
@@ -21,8 +22,9 @@ enum class APIResult : uint8_t
 };
 
 DLL_EXPORT ImGuiContext* GetContext();
-DLL_EXPORT APIResult     RegisterMenuDrawFunc(std::string_view name, std::function<bool()> func);
-DLL_EXPORT void          AddPopup(std::string_view msg);
+DLL_EXPORT APIResult     RegisterOverlayDrawFunc(const RE::BSString& name, bool (*func)());
+DLL_EXPORT APIResult     RegisterMenuDrawFunc(const RE::BSString& name, bool (*func)());
+DLL_EXPORT void          InsertNotification(const ImGuiToast& toast);
 
-}; // namespace Skyrim
-}; // namespace ImGui
+} // namespace Skyrim
+} // namespace ImGui

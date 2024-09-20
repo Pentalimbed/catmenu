@@ -61,6 +61,7 @@ target("imgui-skyrim")
     -- add dependencies to target
     add_deps("commonlibsse-ng")
     add_deps("imgui")
+    add_defines("IMGUI_API=__declspec(dllimport)") -- import symbols
 
     add_packages("spdlog", "unordered_dense", { public = true })
 

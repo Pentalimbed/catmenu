@@ -19,8 +19,6 @@ struct DrawFunc
 class UI
 {
 private:
-    bool accept_registers_ = false;
-
     bool        show_menu_ = false;
     inline void Toggle(std::optional<bool> enabled = std::nullopt)
     {
@@ -31,12 +29,12 @@ private:
     }
 
     std::mutex               list_mutex_;
-    StringMap<DrawFunc>      draw_list_  = {};
-    std::vector<std::string> draw_order_ = {};
-    StringMap<DrawFunc>      menu_list_  = {};
-    std::vector<std::string> menu_order_ = {};
+    StringMap<DrawFunc>      overlay_list_  = {};
+    std::vector<std::string> overlay_order_ = {};
+    StringMap<DrawFunc>      menu_list_     = {};
+    std::vector<std::string> menu_order_    = {};
 
-    void DrawMenu();
+    void SetupTheme();
 
 public:
     static UI* GetSingleton()
@@ -46,7 +44,7 @@ public:
     }
 
     ImGuiContext* GetContext();
-    APIResult     RegisterDrawFunc(std::string_view name, std::function<bool()> func);
+    APIResult     RegisterOverlayDrawFunc(std::string_view name, std::function<bool()> func);
     APIResult     RegisterMenuDrawFunc(std::string_view name, std::function<bool()> func);
 
     void Init(IDXGISwapChain* swapchain, ID3D11Device* device, ID3D11DeviceContext* context);

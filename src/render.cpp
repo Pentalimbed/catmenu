@@ -14,8 +14,7 @@ namespace Skyrim
 LRESULT WndProcHook::thunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     auto& io = ImGui::GetIO();
-    if (uMsg == WM_KILLFOCUS)
-    {
+    if (uMsg == WM_KILLFOCUS) {
         io.ClearInputCharacters();
         io.ClearInputKeys();
     }
@@ -44,9 +43,7 @@ void D3DInitHook::thunk()
 
     UI::GetSingleton()->Init(swapchain, device, context);
 
-    initialized.store(true);
-
-    logger::info("Hooking WndProc...");
+    logger::info("Hooking swapchain present...");
     *(uintptr_t*)&ptr_IDXGISwapChain_Present = Detours::X64::DetourClassVTable(*(uintptr_t*)swapchain, &hk_IDXGISwapChain_Present, 8);
 
     logger::info("Hooking WndProc...");
