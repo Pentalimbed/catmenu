@@ -21,17 +21,28 @@ class UI
 private:
     bool accept_registers_ = false;
 
+    bool        show_menu_ = false;
+    inline void Toggle(std::optional<bool> enabled = std::nullopt)
+    {
+        auto& io = ImGui::GetIO();
+        io.ClearInputCharacters();
+        io.ClearInputKeys();
+        show_menu_ = enabled.value_or(!show_menu_);
+    }
+
     std::mutex               list_mutex_;
     StringMap<DrawFunc>      draw_list_  = {};
     std::vector<std::string> draw_order_ = {};
     StringMap<DrawFunc>      menu_list_  = {};
     std::vector<std::string> menu_order_ = {};
 
+    void DrawMenu();
+
 public:
     static UI* GetSingleton()
     {
         static UI ui;
-        return &ui;
+        return std::addressof(ui);
     }
 
     ImGuiContext* GetContext();

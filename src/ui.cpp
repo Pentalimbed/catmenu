@@ -94,15 +94,32 @@ void UI::Draw()
         for (std::string_view name : draw_order_)
             draw_list_.at(name).func();
 
-        ImGui::ShowDemoWindow();
+        DrawMenu();
 
-        for (std::string_view name : draw_order_)
-            draw_list_.at(name).func();
+        for (std::string_view name : menu_order_)
+            menu_list_.at(name).func();
     }
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
+
+void UI::DrawMenu()
+{
+    if (ImGui::IsKeyPressed(ImGuiKey_Backslash, false))
+        Toggle();
+
+    auto& io           = ImGui::GetIO();
+    io.MouseDrawCursor = show_menu_;
+
+    if (show_menu_)
+    {
+        ImGui::ShowDemoWindow(&show_menu_);
+        if (show_menu_ == false)
+            Toggle(false);
+    }
+}
+
 
 } // namespace Skyrim
 } // namespace ImGui
