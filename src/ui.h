@@ -18,23 +18,34 @@ struct DrawFunc
 
 class UI
 {
+public:
+    struct Settings
+    {
+        int toggle_key = ImGuiKey_Backslash;
+    };
+
 private:
-    bool        show_menu_ = false;
+    bool        show_menu = false;
     inline void Toggle(std::optional<bool> enabled = std::nullopt)
     {
         auto& io = ImGui::GetIO();
         io.ClearInputCharacters();
         io.ClearInputKeys();
-        show_menu_ = enabled.value_or(!show_menu_);
+        show_menu = enabled.value_or(!show_menu);
     }
 
-    std::mutex               list_mutex_;
-    StringMap<DrawFunc>      overlay_list_  = {};
-    std::vector<std::string> overlay_order_ = {};
-    StringMap<DrawFunc>      menu_list_     = {};
-    std::vector<std::string> menu_order_    = {};
+    Settings settings;
+
+    std::mutex               list_mutex;
+    StringMap<DrawFunc>      overlay_list  = {};
+    std::vector<std::string> overlay_order = {};
+    StringMap<DrawFunc>      menu_list     = {};
+    std::vector<std::string> menu_order    = {};
 
     void SetupTheme();
+
+    bool show_config = false;
+    void DrawConfigWindow();
 
 public:
     static UI* GetSingleton()

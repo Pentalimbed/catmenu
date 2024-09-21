@@ -23,7 +23,7 @@ void InitLogging()
     logger->flush_on(spdlog::level::info);
 
     spdlog::set_default_logger(std::move(logger));
-    spdlog::set_pattern("[%^%L%$] %v");
+    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S] [%l] [%t] [%s:%#] %v");
 }
 
 void ProcessMessage(SKSE::MessagingInterface::Message* a_msg)

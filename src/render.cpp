@@ -49,11 +49,7 @@ void D3DInitHook::thunk()
     logger::info("Hooking WndProc...");
     DXGI_SWAP_CHAIN_DESC desc;
     swapchain->GetDesc(&desc);
-    WndProcHook::func = reinterpret_cast<WNDPROC>(
-        SetWindowLongPtrA(
-            desc.OutputWindow,
-            GWLP_WNDPROC,
-            reinterpret_cast<LONG_PTR>(WndProcHook::thunk)));
+    WndProcHook::func = reinterpret_cast<WNDPROC>(SetWindowLongPtrA(desc.OutputWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WndProcHook::thunk)));
 }
 
 } // namespace Skyrim

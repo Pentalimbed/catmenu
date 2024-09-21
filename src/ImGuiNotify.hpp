@@ -62,8 +62,8 @@
 #    define NOTIFY_DEFAULT_DISMISS    3000  // Auto dismiss after X ms (default, applied only of no data provided in constructors)
 #    define NOTIFY_OPACITY            0.8f  // 0-1 Toast opacity
 #    define NOTIFY_USE_SEPARATOR      false // If true, a separator will be rendered between the title and the content
-#    define NOTIFY_USE_DISMISS_BUTTON true  // If true, a dismiss button will be rendered in the top right corner of the toast
-#    define NOTIFY_RENDER_LIMIT       5     // Max number of toasts rendered at the same time. Set to 0 for unlimited
+#    define NOTIFY_USE_DISMISS_BUTTON false // If true, a dismiss button will be rendered in the top right corner of the toast
+#    define NOTIFY_RENDER_LIMIT       0     // Max number of toasts rendered at the same time. Set to 0 for unlimited
 
 // Warning: Requires ImGui docking with multi-viewport enabled
 #    define NOTIFY_RENDER_OUTSIDE_MAIN_WINDOW false // If true, the notifications will be rendered in the corner of the monitor, otherwise in the corner of the main window
