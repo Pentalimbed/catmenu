@@ -2,6 +2,7 @@
 
 #include "input.h"
 
+#include <magic_enum.hpp>
 #include <nlohmann/json.hpp>
 #include <imgui_internal.h>
 #include <imgui_impl_dx11.h>
@@ -11,6 +12,17 @@
 
 namespace nlohmann
 {
+
+void to_json(json& j, const ImVec4& v)
+{
+    j = json{v.x, v.y, v.z, v.w};
+}
+void from_json(const json& j, ImVec4& v)
+{
+    std::array<float, 4> temp = j;
+    v                         = {temp[0], temp[1], temp[2], temp[3]};
+}
+
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
     ImGui::Skyrim::UI::Settings,
     toggle_key,
@@ -23,8 +35,9 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
     glyph_jap,
     glyph_kor,
     glyph_thai,
-    glyph_viet)
-}
+    glyph_viet,
+    theme_colors)
+} // namespace nlohmann
 
 // copied from imgui_impl_dx11.cpp
 
@@ -228,56 +241,16 @@ void UI::Init(IDXGISwapChain* swapchain, ID3D11Device* device, ID3D11DeviceConte
 
 void UI::SetupTheme()
 {
-    should_setup_theme = false;
-
     auto& style  = ImGui::GetStyle();
     auto& colors = style.Colors;
-
-    // https://github.com/ocornut/imgui/issues/707#issuecomment-1494706165
 
     style.WindowRounding    = 5.3f;
     style.FrameRounding     = 2.3f;
     style.ScrollbarRounding = 0;
+    style.FrameBorderSize   = 1;
+    style.TabBarBorderSize  = 1;
 
-    colors[ImGuiCol_Text]                 = ImVec4(0.90f, 0.90f, 0.90f, 0.90f);
-    colors[ImGuiCol_TextDisabled]         = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-    colors[ImGuiCol_WindowBg]             = ImVec4(0.09f, 0.09f, 0.15f, 1.00f);
-    colors[ImGuiCol_ChildBg]              = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_PopupBg]              = ImVec4(0.05f, 0.05f, 0.10f, 0.85f);
-    colors[ImGuiCol_Border]               = ImVec4(0.70f, 0.70f, 0.70f, 0.65f);
-    colors[ImGuiCol_BorderShadow]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_FrameBg]              = ImVec4(0.00f, 0.00f, 0.01f, 1.00f);
-    colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.90f, 0.80f, 0.80f, 0.40f);
-    colors[ImGuiCol_FrameBgActive]        = ImVec4(0.90f, 0.65f, 0.65f, 0.45f);
-    colors[ImGuiCol_TitleBg]              = ImVec4(0.00f, 0.00f, 0.00f, 0.83f);
-    colors[ImGuiCol_TitleBgCollapsed]     = ImVec4(0.40f, 0.40f, 0.80f, 0.20f);
-    colors[ImGuiCol_TitleBgActive]        = ImVec4(0.00f, 0.00f, 0.00f, 0.87f);
-    colors[ImGuiCol_MenuBarBg]            = ImVec4(0.01f, 0.01f, 0.02f, 0.80f);
-    colors[ImGuiCol_ScrollbarBg]          = ImVec4(0.20f, 0.25f, 0.30f, 0.60f);
-    colors[ImGuiCol_ScrollbarGrab]        = ImVec4(0.55f, 0.53f, 0.55f, 0.51f);
-    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.56f, 0.56f, 0.56f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrabActive]  = ImVec4(0.56f, 0.56f, 0.56f, 0.91f);
-    colors[ImGuiCol_CheckMark]            = ImVec4(0.90f, 0.90f, 0.90f, 0.83f);
-    colors[ImGuiCol_SliderGrab]           = ImVec4(0.70f, 0.70f, 0.70f, 0.62f);
-    colors[ImGuiCol_SliderGrabActive]     = ImVec4(0.30f, 0.30f, 0.30f, 0.84f);
-    colors[ImGuiCol_Button]               = ImVec4(0.48f, 0.72f, 0.89f, 0.49f);
-    colors[ImGuiCol_ButtonHovered]        = ImVec4(0.50f, 0.69f, 0.99f, 0.68f);
-    colors[ImGuiCol_ButtonActive]         = ImVec4(0.80f, 0.50f, 0.50f, 1.00f);
-    colors[ImGuiCol_Header]               = ImVec4(0.30f, 0.69f, 1.00f, 0.53f);
-    colors[ImGuiCol_HeaderHovered]        = ImVec4(0.44f, 0.61f, 0.86f, 1.00f);
-    colors[ImGuiCol_HeaderActive]         = ImVec4(0.38f, 0.62f, 0.83f, 1.00f);
-    colors[ImGuiCol_Separator]            = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-    colors[ImGuiCol_SeparatorHovered]     = ImVec4(0.70f, 0.60f, 0.60f, 1.00f);
-    colors[ImGuiCol_SeparatorActive]      = ImVec4(0.90f, 0.70f, 0.70f, 1.00f);
-    colors[ImGuiCol_ResizeGrip]           = ImVec4(1.00f, 1.00f, 1.00f, 0.85f);
-    colors[ImGuiCol_ResizeGripHovered]    = ImVec4(1.00f, 1.00f, 1.00f, 0.60f);
-    colors[ImGuiCol_ResizeGripActive]     = ImVec4(1.00f, 1.00f, 1.00f, 0.90f);
-    colors[ImGuiCol_PlotLines]            = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-    colors[ImGuiCol_PlotLinesHovered]     = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-    colors[ImGuiCol_PlotHistogram]        = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-    colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-    colors[ImGuiCol_TextSelectedBg]       = ImVec4(0.00f, 0.00f, 1.00f, 0.35f);
-    colors[ImGuiCol_ModalWindowDimBg]     = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+    std::copy(settings.theme_colors.begin(), settings.theme_colors.end(), std::span(colors).begin());
 }
 
 void UI::LoadFonts()
@@ -337,8 +310,6 @@ void UI::LoadFonts()
 
 void UI::Draw()
 {
-    if (should_setup_theme)
-        SetupTheme();
     if (should_load_fonts)
         LoadFonts();
 
@@ -375,11 +346,13 @@ void UI::Draw()
 
                     ImGui::Separator();
 
-                    if (ImGui::MenuItem("Close Windows"))
+                    if (ImGui::MenuItem("Close Windows")) {
+                        show_config = false;
                         for (auto& [_, menu_func] : menu_list)
                             menu_func.enabled = false;
+                    }
                     if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Close all menu windows.");
+                        ImGui::SetTooltip("Close all windows.");
 
                     if (ImGui::MenuItem("Close"))
                         Toggle(false);
@@ -390,11 +363,8 @@ void UI::Draw()
                 }
 
                 if (ImGui::BeginMenu("Settings")) {
-                    if (ImGui::MenuItem("General"))
-                        show_config = !show_config;
-
-                    if (ImGui::MenuItem("Palette Editor")) {
-                    }
+                    ImGui::MenuItem("General", nullptr, &show_config);
+                    ImGui::MenuItem("Theme Editor", nullptr, &show_theme_editor);
 
                     ImGui::Separator();
 
@@ -443,6 +413,8 @@ void UI::Draw()
             // default menus
             if (show_config)
                 DrawConfigWindow();
+            if (show_theme_editor)
+                DrawThemeEditor();
 
             // registered menus
             for (std::string_view name : menu_order)
@@ -472,7 +444,7 @@ void UI::DrawConfigWindow()
     ImGui::SetNextWindowPos({viewport->WorkSize.x * 0.1f, viewport->WorkSize.y * 0.2f}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({viewport->WorkSize.x * 0.3f, viewport->WorkSize.y * 0.5f}, ImGuiCond_FirstUseEver);
 
-    if (!ImGui::Begin("ImGui-Skyrim Config", &show_config)) {
+    if (!ImGui::Begin("[ImGui-Skyrim] Configuration", &show_config)) {
         ImGui::End();
         return;
     }
@@ -550,6 +522,32 @@ void UI::DrawConfigWindow()
     ImGui::End();
 }
 
+void UI::DrawThemeEditor()
+{
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos({viewport->WorkSize.x * 0.5f, viewport->WorkSize.y * 0.2f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({viewport->WorkSize.x * 0.3f, viewport->WorkSize.y * 0.5f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("[ImGui-Skyrim] Theme Editor", &show_theme_editor)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::TextWrapped("Note: Some mods may want to use their own themes, which cannot be edited here.");
+
+    ImGui::SeparatorText("Colours");
+
+    auto& style  = ImGui::GetStyle();
+    auto& colors = style.Colors;
+    for (int i = 0; i < ImGuiCol_COUNT; ++i) {
+        auto color_name = magic_enum::enum_name((ImGuiCol_)i);
+        if (ImGui::ColorEdit4(color_name.data() + 9, &settings.theme_colors[i].x))
+            colors[i] = settings.theme_colors[i];
+    }
+
+    ImGui::End();
+}
+
 void UI::SaveSettings()
 {
     std::ofstream o(g_config_path.data());
@@ -561,12 +559,12 @@ void UI::SaveSettings()
     }
 
     nlohmann::json settings_json = settings;
+    o << settings_json;
 
+    // post
     auto msg = std::format("Successfully saved config file to {}", g_config_path);
     logger::info("{}", msg);
     ImGui::InsertNotification({ImGuiToastType::Success, 5000, msg.c_str()});
-
-    o << settings_json;
 }
 
 void UI::LoadSettings()
@@ -591,12 +589,13 @@ void UI::LoadSettings()
 
     settings = settings_json;
 
+    // post
     auto msg = std::format("Successfully loaded config file at {}", g_config_path);
     logger::info("{}", msg);
     ImGui::InsertNotification({ImGuiToastType::Success, 5000, msg.c_str()});
 
-    should_setup_theme = true;
-    should_load_fonts  = true;
+    should_load_fonts = true;
+    SetupTheme();
 }
 
 } // namespace Skyrim

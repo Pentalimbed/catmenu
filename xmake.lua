@@ -37,6 +37,7 @@ set_config("skyrim_vr", false) -- no xmake support it seems
 add_requires("spdlog", { configs = { header_only = false, wchar = true, std_format = true } })
 add_requires("unordered_dense")
 add_requires("nlohmann_json")
+add_requires("magic_enum")
 
 target("imgui")
     set_kind("shared")
@@ -71,8 +72,7 @@ target("imgui-skyrim")
     add_deps("imgui")
     add_defines("IMGUI_API=__declspec(dllimport)") -- import symbols
 
-    add_packages("spdlog", "unordered_dense", { public = true })
-    add_packages("nlohmann_json")
+    add_packages("spdlog", "unordered_dense", "nlohmann_json", "magic_enum")
 
     add_includedirs("lib")
     add_headerfiles("lib/detours/Detours.h")
@@ -88,5 +88,5 @@ target("imgui-skyrim")
     -- add src files
     add_files("src/**.cpp")
     add_headerfiles("src/**.h")
-    add_includedirs("src", { public = true })
+    add_includedirs("src")
     set_pcxxheader("src/pch.h")
