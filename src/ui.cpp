@@ -368,9 +368,9 @@ void UI::Draw()
 
                     ImGui::Separator();
 
-                    if (ImGui::MenuItem("Save"))
+                    if (ImGui::MenuItem("Save Settings"))
                         SaveSettings();
-                    if (ImGui::MenuItem("Load"))
+                    if (ImGui::MenuItem("Load Settings"))
                         LoadSettings();
 
                     ImGui::EndMenu();
@@ -466,7 +466,7 @@ void UI::DrawConfigWindow()
     // fonts
     ImGui::SeparatorText("Font");
 
-    if (ImGui::Button("Refresh font"))
+    if (ImGui::Button("Reload Font", ImVec2(-FLT_MIN, 0)))
         should_load_fonts = true;
 
     ImGui::InputTextWithHint("Font Path", "path to a ttf/otf font e.g. \"C:/Windows/Fonts/Arial.ttf\"", &settings.font_path);
