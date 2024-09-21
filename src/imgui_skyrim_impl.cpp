@@ -9,7 +9,7 @@ namespace Skyrim
 
 ImGuiContext* GetContext()
 {
-    return UI::GetSingleton()->GetContext();
+    return ImGui::GetCurrentContext();
 }
 
 APIResult RegisterOverlayDrawFunc(const RE::BSString& name, bool (*func)())

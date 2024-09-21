@@ -1,10 +1,17 @@
 #include "input.h"
 
+#include "ui.h"
+
 #include <Windows.h>
 #include <WinUser.h>
 #include <dinput.h>
 
-#include <imgui.h>
+namespace ImGui
+{
+namespace Skyrim
+{
+
+ImGuiKey last_key_pressed = ImGuiKey_None;
 
 const ImGuiKey VirtualKeyToImGuiKey(WPARAM vkKey)
 {
@@ -284,55 +291,90 @@ const uint32_t DIKToVK(uint32_t DIK)
     }
 }
 
-namespace ImGui
+
+void hk_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatcher, RE::InputEvent* const* a_events)
 {
-namespace Skyrim
-{
+    bool blockInput = true;
 
-RE::BSEventNotifyControl InputListener::ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>* a_eventSource)
-{
-    if (!a_event || !a_eventSource)
-        return RE::BSEventNotifyControl::kContinue;
+    if (a_events) {
+        last_key_pressed = ImGuiKey_None;
 
-    ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO& io = ImGui::GetIO();
 
-    for (auto event = *a_event; event; event = event->next) {
-        if (event->eventType == RE::INPUT_EVENT_TYPE::kChar) {
-            io.AddInputCharacter(event->AsCharEvent()->keyCode);
-            continue;
-        } else if (event->eventType == RE::INPUT_EVENT_TYPE::kButton) {
-            const auto button = static_cast<RE::ButtonEvent*>(event);
-            if (!button || (button->IsPressed() && !button->IsDown()))
-                continue;
+        for (auto event = *a_events; event; event = event->next) {
+            auto event_type = event->GetEventType();
 
-            auto keyCode = button->GetIDCode();
+            if (event_type == RE::INPUT_EVENT_TYPE::kChar) {
+                io.AddInputCharacter(event->AsCharEvent()->keyCode);
+            } else if (event_type == RE::INPUT_EVENT_TYPE::kButton) {
+                const auto button = static_cast<RE::ButtonEvent*>(event);
+                if (!button || (button->IsPressed() && !button->IsDown()))
+                    continue;
 
-            if (button->device.get() == RE::INPUT_DEVICE::kMouse) {
-                if (keyCode > 7) // middle scroll
-                    io.AddMouseWheelEvent(0, button->Value() * (keyCode == 8 ? 1 : -1));
-                else {
-                    if (keyCode > 5)
-                        keyCode = 5;
-                    io.AddMouseButtonEvent(keyCode, button->IsPressed());
+                auto device  = button->device.get();
+                auto keyCode = button->GetIDCode();
+
+                if (device == RE::INPUT_DEVICE::kMouse) {
+                    if (keyCode > 7) // middle scroll
+                        io.AddMouseWheelEvent(0, button->Value() * (keyCode == 8 ? 1 : -1));
+                    else {
+                        if (keyCode > 5)
+                            keyCode = 5;
+                        io.AddMouseButtonEvent(keyCode, button->IsPressed());
+                    }
+                } else if (device == RE::INPUT_DEVICE::kKeyboard) {
+                    uint32_t key = DIKToVK(keyCode);
+                    if (key == keyCode)
+                        key = MapVirtualKeyEx(keyCode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
+
+                    auto imgui_key = VirtualKeyToImGuiKey(key);
+                    io.AddKeyEvent(imgui_key, button->IsPressed());
+
+                    if (key == VK_LCONTROL || key == VK_RCONTROL) {
+                        io.AddKeyEvent(ImGuiMod_Ctrl, button->IsPressed());
+                    } else if (key == VK_LSHIFT || key == VK_RSHIFT) {
+                        io.AddKeyEvent(ImGuiMod_Shift, button->IsPressed());
+                    } else if (key == VK_LMENU || key == VK_RMENU) {
+                        io.AddKeyEvent(ImGuiMod_Alt, button->IsPressed());
+                    } else {
+                        int mod_key = imgui_key;
+                        if (ImGui::IsKeyDown(ImGuiKey_ModCtrl))
+                            mod_key = mod_key | ImGuiMod_Ctrl;
+                        if (ImGui::IsKeyDown(ImGuiMod_Shift))
+                            mod_key = mod_key | ImGuiMod_Shift;
+                        if (ImGui::IsKeyDown(ImGuiMod_Alt))
+                            mod_key = mod_key | ImGuiMod_Alt;
+                        last_key_pressed = ImGuiKey{mod_key};
+                    }
+
+                    break;
+                } else {
+                    blockInput = device == RE::INPUT_DEVICES::INPUT_DEVICE::kGamepad;
+#ifdef ENABLE_SKYRIM_VR
+                    blockInput = blockInput ||
+                        (REL::Module::IsVR() &&
+                         ((device == RE::INPUT_DEVICES::INPUT_DEVICE::kVivePrimary) ||
+                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kViveSecondary) ||
+                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kOculusPrimary) ||
+                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kOculusSecondary) ||
+                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kWMRPrimary) ||
+                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kWMRSecondary)));
+#endif
+                    blockInput = !blockInput;
                 }
-            } else if (button->device.get() == RE::INPUT_DEVICE::kKeyboard) {
-                uint32_t key = DIKToVK(keyCode);
-                if (key == keyCode)
-                    key = MapVirtualKeyEx(keyCode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
-                io.AddKeyEvent(VirtualKeyToImGuiKey(key), button->IsPressed());
-
-                if (key == VK_LCONTROL || key == VK_RCONTROL)
-                    io.AddKeyEvent(ImGuiMod_Ctrl, button->IsPressed());
-                else if (key == VK_LSHIFT || key == VK_RSHIFT)
-                    io.AddKeyEvent(ImGuiMod_Shift, button->IsPressed());
-                else if (key == VK_LMENU || key == VK_RMENU)
-                    io.AddKeyEvent(ImGuiMod_Alt, button->IsPressed());
-                break;
             }
         }
     }
 
-    return RE::BSEventNotifyControl::kContinue;
+    constexpr RE::InputEvent* const dummy[] = {nullptr};
+    func(a_dispatcher, (blockInput && UI::GetSingleton()->IsMenuOpen()) ? dummy : a_events);
+
+    return;
+}
+
+ImGuiKey GetLastKeyPressed()
+{
+    return last_key_pressed;
 }
 
 } // namespace Skyrim

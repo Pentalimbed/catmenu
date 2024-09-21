@@ -1,21 +1,19 @@
 #pragma once
 
+#include <imgui.h>
+
 namespace ImGui
 {
 namespace Skyrim
 {
 
-class InputListener : public RE::BSTEventSink<RE::InputEvent*>
+struct hk_PollInputDevices
 {
-public:
-    static InputListener* GetSingleton()
-    {
-        static InputListener listener;
-        return std::addressof(listener);
-    }
-
-    virtual RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>* a_eventSource) override;
+    static void                                    thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatcher, RE::InputEvent* const* a_events);
+    static inline REL::Relocation<decltype(thunk)> func;
 };
+
+ImGuiKey GetLastKeyPressed();
 
 } // namespace Skyrim
 } // namespace ImGui

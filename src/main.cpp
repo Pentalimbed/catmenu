@@ -31,8 +31,8 @@ void ProcessMessage(SKSE::MessagingInterface::Message* a_msg)
     switch (a_msg->type) {
         case SKSE::MessagingInterface::kDataLoaded:
             logger::info("Game: data loaded.");
-            RE::BSInputDeviceManager::GetSingleton()->AddEventSink(ImGui::Skyrim::InputListener::GetSingleton());
-            logger::info("Input listener registered.");
+            stl::write_thunk_call<ImGui::Skyrim::hk_PollInputDevices>(REL::RelocationID(67315, 68617).address() + REL::Relocate(0x7B, 0x7B, 0x81));
+            logger::info("hk_PollInputDevices hooked.");
             ImGui::Skyrim::UI::GetSingleton()->RegisterMenuDrawFunc("Demo Window", []() { ImGui::ShowDemoWindow(); return true; });
             break;
         default:

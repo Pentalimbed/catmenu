@@ -1,18 +1,160 @@
 #include "ui.h"
 
+#include "input.h"
+
+#include <nlohmann/json.hpp>
+#include <imgui_internal.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
+#include <imgui_stdlib.h>
 #include <ImGuiNotify.hpp>
+
+namespace nlohmann
+{
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
+    ImGui::Skyrim::UI::Settings,
+    toggle_key,
+    font_path,
+    font_size,
+    glyph_chn_full,
+    glyph_chs_common,
+    glyph_cyr,
+    glyph_greek,
+    glyph_jap,
+    glyph_kor,
+    glyph_thai,
+    glyph_viet)
+}
+
+// copied from imgui_impl_dx11.cpp
+
+struct ImGui_ImplDX11_Data
+{
+    ID3D11Device*             pd3dDevice;
+    ID3D11DeviceContext*      pd3dDeviceContext;
+    IDXGIFactory*             pFactory;
+    ID3D11Buffer*             pVB;
+    ID3D11Buffer*             pIB;
+    ID3D11VertexShader*       pVertexShader;
+    ID3D11InputLayout*        pInputLayout;
+    ID3D11Buffer*             pVertexConstantBuffer;
+    ID3D11PixelShader*        pPixelShader;
+    ID3D11SamplerState*       pFontSampler;
+    ID3D11ShaderResourceView* pFontTextureView;
+    ID3D11RasterizerState*    pRasterizerState;
+    ID3D11BlendState*         pBlendState;
+    ID3D11DepthStencilState*  pDepthStencilState;
+    int                       VertexBufferSize;
+    int                       IndexBufferSize;
+
+    ImGui_ImplDX11_Data()
+    {
+        memset((void*)this, 0, sizeof(*this));
+        VertexBufferSize = 5000;
+        IndexBufferSize  = 10000;
+    }
+};
+
+static ImGui_ImplDX11_Data* ImGui_ImplDX11_GetBackendData()
+{
+    return ImGui::GetCurrentContext() ? (ImGui_ImplDX11_Data*)ImGui::GetIO().BackendRendererUserData : nullptr;
+}
+
+static void ImGui_ImplDX11_CreateFontsTexture()
+{
+    // Build texture atlas
+    ImGuiIO&             io = ImGui::GetIO();
+    ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+    unsigned char*       pixels;
+    int                  width, height;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+    // Upload texture to graphics system
+    {
+        D3D11_TEXTURE2D_DESC desc;
+        ZeroMemory(&desc, sizeof(desc));
+        desc.Width            = width;
+        desc.Height           = height;
+        desc.MipLevels        = 1;
+        desc.ArraySize        = 1;
+        desc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.Usage            = D3D11_USAGE_DEFAULT;
+        desc.BindFlags        = D3D11_BIND_SHADER_RESOURCE;
+        desc.CPUAccessFlags   = 0;
+
+        ID3D11Texture2D*       pTexture = nullptr;
+        D3D11_SUBRESOURCE_DATA subResource;
+        subResource.pSysMem          = pixels;
+        subResource.SysMemPitch      = desc.Width * 4;
+        subResource.SysMemSlicePitch = 0;
+        bd->pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+        IM_ASSERT(pTexture != nullptr);
+
+        // Create texture view
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+        ZeroMemory(&srvDesc, sizeof(srvDesc));
+        srvDesc.Format                    = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels       = desc.MipLevels;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        bd->pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, &bd->pFontTextureView);
+        pTexture->Release();
+    }
+
+    // Store our identifier
+    io.Fonts->SetTexID((ImTextureID)bd->pFontTextureView);
+
+    // Create texture sampler
+    // (Bilinear sampling is required by default. Set 'io.Fonts->Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
+    {
+        D3D11_SAMPLER_DESC desc;
+        ZeroMemory(&desc, sizeof(desc));
+        desc.Filter         = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        desc.AddressU       = D3D11_TEXTURE_ADDRESS_WRAP;
+        desc.AddressV       = D3D11_TEXTURE_ADDRESS_WRAP;
+        desc.AddressW       = D3D11_TEXTURE_ADDRESS_WRAP;
+        desc.MipLODBias     = 0.f;
+        desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+        desc.MinLOD         = 0.f;
+        desc.MaxLOD         = 0.f;
+        bd->pd3dDevice->CreateSamplerState(&desc, &bd->pFontSampler);
+    }
+}
+
+void ImGui_ImplDX11_ReCreateFontsTexture()
+{
+    ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+
+    if (bd->pFontSampler) {
+        bd->pFontSampler->Release();
+        bd->pFontSampler = NULL;
+    }
+    if (bd->pFontTextureView) {
+        bd->pFontTextureView->Release();
+        bd->pFontTextureView = NULL;
+        ImGui::GetIO().Fonts->SetTexID(NULL);
+    }
+    ImGui_ImplDX11_CreateFontsTexture();
+}
 
 namespace ImGui
 {
 namespace Skyrim
 {
 
-ImGuiContext* UI::GetContext()
+constexpr auto g_config_path = "Data\\SKSE\\Plugins\\imgui-skyrim\\settings.json"sv;
+
+std::string KeyToString(ImGuiKey key)
 {
-    return ImGui::GetCurrentContext();
+    bool ctrl  = (int)key & (int)ImGuiMod_Ctrl;
+    bool shift = (int)key & (int)ImGuiMod_Shift;
+    bool alt   = (int)key & (int)ImGuiMod_Alt;
+    key        = ImGuiKey{(int)key & ~(int)ImGuiMod_Mask_};
+    return (ctrl ? "Ctrl + "s : ""s) + (shift ? "Shift + "s : ""s) + (alt ? "Alt + "s : ""s) + std::string(ImGui::GetKeyName(ImGuiKey{key}));
 }
+
+
 
 APIResult UI::RegisterOverlayDrawFunc(std::string_view name, std::function<bool()> func)
 {
@@ -27,7 +169,7 @@ APIResult UI::RegisterOverlayDrawFunc(std::string_view name, std::function<bool(
     overlay_list.insert({name_str, DrawFunc{name_str, func, true}});
     overlay_order.push_back(name_str);
 
-    logger::info("Draw func {} registered.", name);
+    logger::info("Overlay: {} registered.", name);
     ImGui::InsertNotification({ImGuiToastType::Success, 5000, "Overlay: %s registered.", name.data()});
 
     return APIResult::OK;
@@ -38,14 +180,14 @@ APIResult UI::RegisterMenuDrawFunc(std::string_view name, std::function<bool()> 
     std::lock_guard list_lock{list_mutex};
 
     if (auto it = menu_list.find(name); it != menu_list.end()) {
-        logger::warn("Trying to register menu draw func {} which already exists. Aborted.", name);
+        logger::warn("Trying to register menu: {}, which already exists. Aborted.", name);
         return APIResult::AlreadyRegistered;
     }
 
     std::string name_str{name};
     menu_list.insert({name_str, DrawFunc{name_str, func, false}});
     menu_order.push_back(name_str);
-    logger::info("Menu draw func {} registered.", name);
+    logger::info("Menu: {} registered.", name);
     ImGui::InsertNotification({ImGuiToastType::Success, 5000, "Menu: %s registered.", name.data()});
 
     return APIResult::OK;
@@ -69,29 +211,14 @@ void UI::Init(IDXGISwapChain* swapchain, ID3D11Device* device, ID3D11DeviceConte
     logger::info("ImGui initialized.");
 
     ///////////////////////// CONFIG
-    auto& imgui_io = ImGui::GetIO();
+    LoadSettings();
 
-    imgui_io.ConfigFlags  = ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
-    imgui_io.BackendFlags = ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_RendererHasVtxOffset;
+    auto& io = ImGui::GetIO();
 
-    SetupTheme();
+    io.ConfigFlags  = ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
+    io.BackendFlags = ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_RendererHasVtxOffset;
 
-    ///////////////////////// FONTS
-    float base_font_size = 20.0f;
-    // float icon_font_size = base_font_size * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
-
-    // add atkinson hyperlegible
-    imgui_io.Fonts->AddFontFromFileTTF("Data\\SKSE\\Plugins\\imgui-skyrim\\fonts\\Atkinson-Hyperlegible-Regular-102.ttf", base_font_size);
-
-    // add font awesome 6
-    static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
-    ImFontConfig         icons_config;
-    icons_config.MergeMode            = true;
-    icons_config.PixelSnapH           = true;
-    icons_config.FontDataOwnedByAtlas = true;
-
-    imgui_io.Fonts->AddFontFromFileTTF("Data\\SKSE\\Plugins\\imgui-skyrim\\fonts\\fa-solid-900.ttf", base_font_size, &icons_config, icons_ranges);
-
+    ///////////////////////// POST
     auto ver = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
     auto msg = std::format("ImGui-Skyrim ({}.{}.{}) initialized.", ver.major(), ver.minor(), ver.patch());
     logger::info("{}", msg);
@@ -101,6 +228,8 @@ void UI::Init(IDXGISwapChain* swapchain, ID3D11Device* device, ID3D11DeviceConte
 
 void UI::SetupTheme()
 {
+    should_setup_theme = false;
+
     auto& style  = ImGui::GetStyle();
     auto& colors = style.Colors;
 
@@ -149,66 +278,87 @@ void UI::SetupTheme()
     colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
     colors[ImGuiCol_TextSelectedBg]       = ImVec4(0.00f, 0.00f, 1.00f, 0.35f);
     colors[ImGuiCol_ModalWindowDimBg]     = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+}
 
-    // style.WindowTitleAlign = ImVec2(0.5, 0.5);
-    // style.FramePadding     = ImVec2(4, 4);
+void UI::LoadFonts()
+{
+    should_load_fonts = false;
 
-    // ImVec4 palette[] = {
-    //     {22.f / 255.f, 38.f / 255.f, 46.f / 255.f, 1.0f},
-    //     {46.f / 255.f, 71.f / 255.f, 86.f / 255.f, 1.0f},
-    //     {60.f / 255.f, 122.f / 255.f, 137.f / 255.f, 1.0f},
-    //     {159.f / 255.f, 162.f / 255.f, 178.f / 255.f, 1.0f},
-    //     {64.f / 255.f, 98.f / 255.f, 119.f / 255.f, 1.0f} // slightly brighter version of [1]
-    // };
+    auto& io         = ImGui::GetIO();
+    bool  is_rebuild = io.Fonts->IsBuilt();
 
-    // // Window
-    // colors[ImGuiCol_WindowBg]          = ImVec4{palette[0].x, palette[0].y, palette[0].z, 0.784f};
-    // colors[ImGuiCol_ResizeGrip]        = ImVec4{palette[2].x, palette[2].y, palette[2].z, 0.5f};
-    // colors[ImGuiCol_ResizeGripHovered] = ImVec4{palette[3].x, palette[3].y, palette[3].z, 0.75f};
-    // colors[ImGuiCol_ResizeGripActive]  = palette[1];
+    io.Fonts->Clear();
 
-    // // Header
-    // colors[ImGuiCol_Header]        = palette[4];
-    // colors[ImGuiCol_HeaderHovered] = palette[3];
-    // colors[ImGuiCol_HeaderActive]  = palette[2];
+    // main font
+    ImVector<ImWchar>        ranges;
+    ImFontGlyphRangesBuilder builder;
+    builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+    if (settings.glyph_chn_full) builder.AddRanges(io.Fonts->GetGlyphRangesChineseFull());
+    if (settings.glyph_chs_common) builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    if (settings.glyph_cyr) builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic());
+    if (settings.glyph_greek) builder.AddRanges(io.Fonts->GetGlyphRangesGreek());
+    if (settings.glyph_jap) builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+    if (settings.glyph_kor) builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+    if (settings.glyph_thai) builder.AddRanges(io.Fonts->GetGlyphRangesThai());
+    if (settings.glyph_viet) builder.AddRanges(io.Fonts->GetGlyphRangesVietnamese());
+    builder.BuildRanges(&ranges);
 
-    // // Title
-    // colors[ImGuiCol_TitleBg]          = palette[1];
-    // colors[ImGuiCol_TitleBgActive]    = palette[1];
-    // colors[ImGuiCol_TitleBgCollapsed] = palette[1];
-    // colors[ImGuiCol_MenuBarBg]        = palette[1];
+    main_font = io.Fonts->AddFontFromFileTTF(settings.font_path.c_str(), settings.font_size, NULL, ranges.Data);
+    if (!main_font) {
+        auto msg = std::format("Failed to load main font at {}\nUsing backup font.", settings.font_path);
+        logger::error("{}", msg);
+        ImGui::InsertNotification({ImGuiToastType::Error, 5000, msg.c_str()});
 
-    // // Frame Background
-    // colors[ImGuiCol_FrameBg]        = palette[1];
-    // colors[ImGuiCol_FrameBgHovered] = palette[3];
-    // colors[ImGuiCol_FrameBgActive]  = palette[2];
+        io.Fonts->AddFontDefault();
 
-    // // Button
-    // colors[ImGuiCol_Button]        = palette[1];
-    // colors[ImGuiCol_ButtonHovered] = palette[3];
-    // colors[ImGuiCol_ButtonActive]  = palette[2];
+        return;
+    }
 
-    // // Tab
-    // colors[ImGuiCol_Tab]                = palette[1];
-    // colors[ImGuiCol_TabHovered]         = ImVec4{0.38f, 0.38f, 0.38f, 1.0f};
-    // colors[ImGuiCol_TabActive]          = ImVec4{0.28f, 0.28f, 0.28f, 1.0f};
-    // colors[ImGuiCol_TabUnfocused]       = palette[1];
-    // colors[ImGuiCol_TabUnfocusedActive] = palette[2];
+    // add font awesome 6
+    static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
+    ImFontConfig         icons_config;
+    icons_config.MergeMode            = true;
+    icons_config.PixelSnapH           = true;
+    icons_config.FontDataOwnedByAtlas = true;
+
+    if (!io.Fonts->AddFontFromFileTTF("Data\\SKSE\\Plugins\\imgui-skyrim\\fonts\\fa-solid-900.ttf", settings.font_size, &icons_config, icons_ranges)) {
+        auto msg = std::format("Failed to load icon font at {}\nPlease verify the intergrity of mod files.", settings.font_path);
+        logger::error("{}", msg);
+        ImGui::InsertNotification({ImGuiToastType::Error, 5000, msg.c_str()});
+    }
+
+    io.Fonts->Build();
+
+    if (is_rebuild)
+        ImGui_ImplDX11_ReCreateFontsTexture();
+
+    logger::info("Font {} built.", settings.font_path);
 }
 
 void UI::Draw()
 {
+    if (should_setup_theme)
+        SetupTheme();
+    if (should_load_fonts)
+        LoadFonts();
+
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
+    if (main_font)
+        ImGui::PushFont(main_font);
+
     {
         std::lock_guard list_lock{list_mutex};
 
-        for (std::string_view name : overlay_order)
+        for (std::string_view name : overlay_order) {
+            ImGui::PushID(name.data());
             overlay_list.at(name).func();
+            ImGui::PopID();
+        }
 
-        if (ImGui::IsKeyPressed((ImGuiKey)settings.toggle_key, false))
+        if (ImGui::IsKeyPressed(ImGuiKey{settings.toggle_key}, false))
             Toggle();
 
         auto& io           = ImGui::GetIO();
@@ -248,8 +398,10 @@ void UI::Draw()
 
                     ImGui::Separator();
 
-                    ImGui::MenuItem("Save");
-                    ImGui::MenuItem("Load");
+                    if (ImGui::MenuItem("Save"))
+                        SaveSettings();
+                    if (ImGui::MenuItem("Load"))
+                        LoadSettings();
 
                     ImGui::EndMenu();
                 }
@@ -294,8 +446,11 @@ void UI::Draw()
 
             // registered menus
             for (std::string_view name : menu_order)
-                if (auto& menu_func = menu_list.at(name); menu_func.enabled)
+                if (auto& menu_func = menu_list.at(name); menu_func.enabled) {
+                    ImGui::PushID(name.data());
                     menu_func.enabled = menu_func.func();
+                    ImGui::PopID();
+                }
         }
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);   // Disable round borders
@@ -304,18 +459,144 @@ void UI::Draw()
         ImGui::PopStyleVar(2);
     }
 
+    if (main_font)
+        ImGui::PopFont();
+
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
 void UI::DrawConfigWindow()
 {
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos({viewport->WorkSize.x * 0.1f, viewport->WorkSize.y * 0.2f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({viewport->WorkSize.x * 0.3f, viewport->WorkSize.y * 0.5f}, ImGuiCond_FirstUseEver);
+
     if (!ImGui::Begin("ImGui-Skyrim Config", &show_config)) {
         ImGui::End();
         return;
     }
 
+    // toggle key
+    auto key_name = KeyToString(ImGuiKey{settings.toggle_key});
+    ImGui::InputTextWithHint("Toggle Button", "Click to set keyboard shortcut", &key_name,
+                             ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_NoUndoRedo | ImGuiInputTextFlags_NoHorizontalScroll);
+    if (ImGui::IsItemActive()) {
+        const auto last_key_pressed = GetLastKeyPressed();
+        if (last_key_pressed != ImGuiKey_None) {
+            settings.toggle_key = last_key_pressed;
+            ImGui::ClearActiveID();
+        }
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Click in the field and press any key to change the shortcut.");
+
+    // fonts
+    ImGui::SeparatorText("Font");
+
+    if (ImGui::Button("Refresh font"))
+        should_load_fonts = true;
+
+    ImGui::InputTextWithHint("Font Path", "path to a ttf/otf font e.g. \"C:/Windows/Fonts/Arial.ttf\"", &settings.font_path);
+
+    ImGui::SliderFloat("Font Size", &settings.font_size, 8.0f, 40.0f, "%.1f");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Control how big the font is.\nOnly applies to custom fonts.");
+
+    if (ImGui::TreeNodeEx("Extra Glyphs", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::BeginTable("Extra Glyphs Table", 2, ImGuiTableFlags_Hideable)) {
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Chinese-Full", &settings.glyph_chn_full);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("全套漢字");
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Chinese-Common Simplified", &settings.glyph_chs_common);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("常用简体汉字");
+
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Cyrillic", &settings.glyph_cyr);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Кириллица/Кирилиця/Кірыліца");
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Greek", &settings.glyph_greek);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Ελληνικό αλφάβητο");
+
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Japanese", &settings.glyph_jap);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("日本語の仮名と漢字");
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Korean", &settings.glyph_kor);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("한글");
+
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Thai", &settings.glyph_thai);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("อักษรไทย");
+            ImGui::TableNextColumn();
+            ImGui::Checkbox("Vietnamese", &settings.glyph_viet);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("chữ Quốc ngữ");
+
+
+            ImGui::EndTable();
+        }
+        ImGui::TreePop();
+    }
+
     ImGui::End();
+}
+
+void UI::SaveSettings()
+{
+    std::ofstream o(g_config_path.data());
+    if (!o.is_open()) {
+        auto msg = std::format("Unable to save config file to {}", g_config_path);
+        logger::error("{}", msg);
+        ImGui::InsertNotification({ImGuiToastType::Error, 5000, msg.c_str()});
+        return;
+    }
+
+    nlohmann::json settings_json = settings;
+
+    auto msg = std::format("Successfully saved config file to {}", g_config_path);
+    logger::info("{}", msg);
+    ImGui::InsertNotification({ImGuiToastType::Success, 5000, msg.c_str()});
+
+    o << settings_json;
+}
+
+void UI::LoadSettings()
+{
+    std::ifstream i(g_config_path.data());
+    if (!i.is_open()) {
+        auto msg = std::format("Unable to load config file at {}\nAll settings are reset to default.", g_config_path);
+        logger::error("{}", msg);
+        ImGui::InsertNotification({ImGuiToastType::Error, 5000, msg.c_str()});
+        return;
+    }
+
+    nlohmann::json settings_json;
+    try {
+        i >> settings_json;
+    } catch (const nlohmann::json::parse_error& e) {
+        auto msg = std::format("Error parsing config file at {}\nError: {}\nAll settings are reset to default.", g_config_path, e.what());
+        logger::error("{}", msg);
+        ImGui::InsertNotification({ImGuiToastType::Error, 5000, msg.c_str()});
+        return;
+    }
+
+    settings = settings_json;
+
+    auto msg = std::format("Successfully loaded config file at {}", g_config_path);
+    logger::info("{}", msg);
+    ImGui::InsertNotification({ImGuiToastType::Success, 5000, msg.c_str()});
+
+    should_setup_theme = true;
+    should_load_fonts  = true;
 }
 
 } // namespace Skyrim

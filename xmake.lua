@@ -24,6 +24,10 @@ set_policy("package.requires_lock", true)
 -- set runtimes
 set_runtimes("MD")
 
+-- set encodings
+set_encodings("utf-8") -- msvc: /utf-8
+set_encodings("source:utf-8", "target:utf-8")
+
 -- set configs
 set_config("skyrim_se", true)
 set_config("skyrim_ae", true)
@@ -46,6 +50,9 @@ target("imgui")
         "lib/imgui/backends/imgui_impl_dx11.cpp",
         "lib/imgui/backends/imgui_impl_win32.cpp")
     add_includedirs("lib/imgui/backends/", { public = true })
+
+    add_files("lib/imgui/misc/cpp/imgui_stdlib.cpp")
+    add_includedirs("lib/imgui/misc/cpp/", { public = true })
 
     add_defines("IMGUI_API=__declspec(dllexport)") -- export symbols
 
