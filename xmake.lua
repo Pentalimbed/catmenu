@@ -6,7 +6,7 @@ includes("lib/commonlibsse-ng")
 
 -- set project
 set_project("catmenu")
-set_version("1.0.0")
+set_version("2.0.0")
 set_license("MIT")
 
 -- set defaults

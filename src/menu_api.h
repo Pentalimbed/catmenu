@@ -11,7 +11,7 @@
 namespace CatMenu
 {
 
-constexpr REL::Version API_VER = {1, 0, 0, 0};
+constexpr REL::Version API_VER = {2, 0, 0, 0};
 
 enum class APIResult : uint8_t
 {
