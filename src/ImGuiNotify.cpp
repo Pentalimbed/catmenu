@@ -42,6 +42,8 @@
 
 namespace ImGui
 {
+
+std::mutex              notification_mutex;
 std::vector<ImGuiToast> notifications;
 
 /**
@@ -50,6 +52,7 @@ std::vector<ImGuiToast> notifications;
      */
 void InsertNotification(const ImGuiToast& toast)
 {
+    std::lock_guard lock(notification_mutex);
     notifications.push_back(toast);
 }
 
@@ -60,6 +63,7 @@ void InsertNotification(const ImGuiToast& toast)
      */
 void RemoveNotification(int index)
 {
+    std::lock_guard lock(notification_mutex);
     notifications.erase(notifications.begin() + index);
 }
 
@@ -70,6 +74,8 @@ void RemoveNotification(int index)
      */
 void RenderNotifications()
 {
+    std::lock_guard lock(notification_mutex);
+
     const ImVec2 mainWindowSize = GetMainViewport()->Size;
 
     float height = 0.f;
