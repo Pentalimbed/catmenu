@@ -231,7 +231,7 @@ void UI::Init(IDXGISwapChain* swapchain, ID3D11Device* device, ID3D11DeviceConte
 
     ///////////////////////// POST
     auto ver = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
-    auto msg = std::format("CatMenu ({}.{}.{}) initialized.", ver.major(), ver.minor(), ver.patch());
+    auto msg = std::format("CatMenu v{} initialized.", ver);
     logger::info("{}", msg);
     ImGui::InsertNotification({ImGuiToastType::Success, 5000, msg.c_str()});
 }
@@ -377,10 +377,7 @@ void UI::Draw()
                 if (ImGui::BeginMenu("About")) {
                     if (ImGui::MenuItem("Info")) {
                         auto ver = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
-                        auto msg = std::format(
-                            "CatMenu version {}.{}.{}.\n"
-                            "Programmed by FiveLimbedCat/ProfJack.",
-                            ver.major(), ver.minor(), ver.patch());
+                        auto msg = std::format("CatMenu version {}.\nProgrammed by FiveLimbedCat/ProfJack.", ver);
                         ImGui::InsertNotification({ImGuiToastType::Info, 10000, msg.c_str()});
                     }
                     ImGui::EndMenu();
