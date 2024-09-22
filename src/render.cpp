@@ -12,8 +12,8 @@ namespace CatMenu
 LRESULT
 WndProcHook::thunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    auto& io = ImGui::GetIO();
     if (uMsg == WM_KILLFOCUS) {
+        auto& io = ImGui::GetIO();
         io.ClearInputCharacters();
         io.ClearInputKeys();
     }

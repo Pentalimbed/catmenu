@@ -39,6 +39,7 @@ add_requires("unordered_dense")
 add_requires("nlohmann_json")
 add_requires("magic_enum")
 
+-- targets
 target("imgui")
     set_kind("shared")
     
@@ -57,16 +58,10 @@ target("imgui")
 
     add_defines("IMGUI_API=__declspec(dllexport)") -- export symbols
 
-
--- targets
 target("catmenu")
     set_kind("shared")
 
     add_defines("UNICODE")
-    add_cxxflags(
-        "cl::/wd4200", -- zero-sized array in struct/union
-        "cl::/wd4201"  -- nameless struct/union
-    )
 
     -- add dependencies to target
     add_deps("commonlibsse-ng")

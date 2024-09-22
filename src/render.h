@@ -11,8 +11,6 @@ struct WndProcHook
     static inline WNDPROC func;
 };
 
-using FuncVector = std::vector<std::function<void()>>;
-
 struct D3DInitHook
 {
     static void                                    thunk();

@@ -6,6 +6,8 @@
 #include <WinUser.h>
 #include <dinput.h>
 
+#include <magic_enum.hpp>
+
 namespace CatMenu
 {
 
@@ -290,7 +292,7 @@ const uint32_t DIKToVK(uint32_t DIK)
 }
 
 
-void hk_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatcher, RE::InputEvent* const* a_events)
+void BSInputDeviceManager_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatcher, RE::InputEvent* const* a_events)
 {
     bool blockInput = true;
 
@@ -305,8 +307,8 @@ void hk_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatche
             if (event_type == RE::INPUT_EVENT_TYPE::kChar) {
                 io.AddInputCharacter(event->AsCharEvent()->keyCode);
             } else if (event_type == RE::INPUT_EVENT_TYPE::kButton) {
-                const auto button = static_cast<RE::ButtonEvent*>(event);
-                if (!button || (button->IsPressed() && !button->IsDown()))
+                const auto button = event->AsButtonEvent();
+                if (button->IsPressed() && !button->IsDown())
                     continue;
 
                 auto device  = button->device.get();
@@ -344,8 +346,6 @@ void hk_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatche
                             mod_key = mod_key | ImGuiMod_Alt;
                         last_key_pressed = ImGuiKey{mod_key};
                     }
-
-                    break;
                 } else {
                     blockInput = device == RE::INPUT_DEVICES::INPUT_DEVICE::kGamepad;
 #ifdef ENABLE_SKYRIM_VR
@@ -374,4 +374,5 @@ ImGuiKey GetLastKeyPressed()
 {
     return last_key_pressed;
 }
+
 } // namespace CatMenu
