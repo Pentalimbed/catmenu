@@ -33,7 +33,6 @@ void ProcessMessage(SKSE::MessagingInterface::Message* a_msg)
             logger::info("Game: data loaded.");
             stl::write_thunk_call<CatMenu::hk_PollInputDevices>(REL::RelocationID(67315, 68617).address() + REL::Relocate(0x7B, 0x7B, 0x81));
             logger::info("hk_PollInputDevices hooked.");
-            CatMenu::UI::GetSingleton()->RegisterMenuDrawFunc("Demo Window", []() { ImGui::ShowDemoWindow(); return true; });
             break;
         default:
             break;
