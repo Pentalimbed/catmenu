@@ -31,7 +31,7 @@ set_encodings("source:utf-8", "target:utf-8")
 -- set configs
 set_config("skyrim_se", true)
 set_config("skyrim_ae", true)
-set_config("skyrim_vr", false) -- no xmake support it seems
+set_config("skyrim_vr", true)
 
 -- set requires
 add_requires("spdlog", { configs = { header_only = false, wchar = true, std_format = true } })
