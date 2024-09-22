@@ -11,6 +11,8 @@
 namespace CatMenu
 {
 
+constexpr REL::Version API_VER = {1, 0, 0, 0};
+
 enum class APIResult : uint8_t
 {
     OK,
@@ -29,7 +31,25 @@ public:
     virtual void          InsertNotification(const ImGuiToast& toast)                       = 0;
 };
 
-extern "C" __declspec(dllexport) APIBase* GetAPI();
+[[nodiscard]] inline std::variant<APIBase*, std::string> RequestCatMenuAPI()
+{
+    typedef APIBase* (*_RequestCatMenuAPIFunc)();
 
+    auto plugin_handle = GetModuleHandle(L"CatMenu.dll");
+    if (!plugin_handle)
+        return "Cannot find CatMenu.";
+
+    _RequestCatMenuAPIFunc requestAPIFunc = (_RequestCatMenuAPIFunc)GetProcAddress(plugin_handle, "GetAPI");
+    if (requestAPIFunc) {
+        auto api     = requestAPIFunc();
+        auto api_ver = api->GetVersion();
+        if (api_ver == API_VER)
+            return api;
+        else
+            return std::format("Version mismatch! Requested {}. Get {}.", API_VER, api_ver);
+    }
+
+    return "Failed to get.";
+}
 
 } // namespace CatMenu

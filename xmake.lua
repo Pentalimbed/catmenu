@@ -62,6 +62,7 @@ target("imgui")
 target("catmenu")
     set_kind("shared")
 
+    add_defines("UNICODE")
     add_cxxflags(
         "cl::/wd4200", -- zero-sized array in struct/union
         "cl::/wd4201"  -- nameless struct/union

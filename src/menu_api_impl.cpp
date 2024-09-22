@@ -8,7 +8,7 @@ namespace CatMenu
 
 REL::Version API::GetVersion()
 {
-    return SKSE::PluginDeclaration::GetSingleton()->GetVersion();
+    return API_VER;
 }
 ImGuiContext* API::GetContext()
 {
