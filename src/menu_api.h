@@ -7,7 +7,6 @@
 #include <imgui.h>
 #include <ImGuiNotify.hpp>
 
-#define DLL_EXPORT __declspec(dllexport)
 
 namespace CatMenu
 {
@@ -19,9 +18,18 @@ enum class APIResult : uint8_t
     NotRegistered,
 };
 
-DLL_EXPORT ImGuiContext* GetContext();
-DLL_EXPORT APIResult     RegisterOverlayDrawFunc(const RE::BSString& name, bool (*func)());
-DLL_EXPORT APIResult     RegisterMenuDrawFunc(const RE::BSString& name, bool (*func)());
-DLL_EXPORT void          InsertNotification(const ImGuiToast& toast);
+class APIBase
+{
+public:
+    virtual REL::Version GetVersion() = 0;
+
+    virtual ImGuiContext* GetContext()                                                      = 0;
+    virtual APIResult     RegisterOverlayDrawFunc(const RE::BSString& name, bool (*func)()) = 0;
+    virtual APIResult     RegisterMenuDrawFunc(const RE::BSString& name, bool (*func)())    = 0;
+    virtual void          InsertNotification(const ImGuiToast& toast)                       = 0;
+};
+
+extern "C" __declspec(dllexport) APIBase* GetAPI();
+
 
 } // namespace CatMenu
