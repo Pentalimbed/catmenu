@@ -30,4 +30,10 @@ void API::InsertNotification(const ImGuiToast& toast)
     ImGui::InsertNotification(toast);
 }
 
+
+extern "C" __declspec(dllexport) APIBase* GetAPI()
+{
+    return API::GetSingleton();
+}
+
 } // namespace CatMenu
