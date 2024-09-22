@@ -2,11 +2,9 @@
 
 #include "imgui.h"
 
-#include "imgui_skyrim.h"
+#include "menu_api.h"
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
 struct DrawFunc
@@ -23,7 +21,7 @@ public:
     {
         int toggle_key = ImGuiKey_Backslash;
 
-        std::string font_path        = "Data\\SKSE\\Plugins\\imgui-skyrim\\fonts\\Atkinson-Hyperlegible-Regular-102.ttf";
+        std::string font_path        = "Data\\SKSE\\Plugins\\catmenu\\fonts\\Atkinson-Hyperlegible-Regular-102.ttf";
         float       font_size        = 16.0f;
         bool        glyph_chn_full   = false;
         bool        glyph_chs_common = false;
@@ -147,6 +145,4 @@ public:
     void Init(IDXGISwapChain* swapchain, ID3D11Device* device, ID3D11DeviceContext* context);
     void Draw();
 };
-
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

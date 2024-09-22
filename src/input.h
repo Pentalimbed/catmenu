@@ -2,9 +2,7 @@
 
 #include <imgui.h>
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
 struct hk_PollInputDevices
@@ -14,6 +12,4 @@ struct hk_PollInputDevices
 };
 
 ImGuiKey GetLastKeyPressed();
-
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

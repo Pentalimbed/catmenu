@@ -6,12 +6,11 @@
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
-LRESULT WndProcHook::thunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT
+WndProcHook::thunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     auto& io = ImGui::GetIO();
     if (uMsg == WM_KILLFOCUS) {
@@ -51,6 +50,4 @@ void D3DInitHook::thunk()
     swapchain->GetDesc(&desc);
     WndProcHook::func = reinterpret_cast<WNDPROC>(SetWindowLongPtrA(desc.OutputWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WndProcHook::thunk)));
 }
-
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

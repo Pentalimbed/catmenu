@@ -24,7 +24,7 @@ void from_json(const json& j, ImVec4& v)
 }
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(
-    ImGui::Skyrim::UI::Settings,
+    CatMenu::UI::Settings,
     toggle_key,
     font_path,
     font_size,
@@ -151,12 +151,10 @@ void ImGui_ImplDX11_ReCreateFontsTexture()
     ImGui_ImplDX11_CreateFontsTexture();
 }
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
-constexpr auto g_config_path = "Data\\SKSE\\Plugins\\imgui-skyrim\\settings.json"sv;
+constexpr auto g_config_path = "Data\\SKSE\\Plugins\\catmenu\\settings.json"sv;
 
 std::string KeyToString(ImGuiKey key)
 {
@@ -233,7 +231,7 @@ void UI::Init(IDXGISwapChain* swapchain, ID3D11Device* device, ID3D11DeviceConte
 
     ///////////////////////// POST
     auto ver = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
-    auto msg = std::format("ImGui-Skyrim ({}.{}.{}) initialized.", ver.major(), ver.minor(), ver.patch());
+    auto msg = std::format("CatMenu ({}.{}.{}) initialized.", ver.major(), ver.minor(), ver.patch());
     logger::info("{}", msg);
     ImGui::InsertNotification({ImGuiToastType::Success, 5000, msg.c_str()});
 }
@@ -294,7 +292,7 @@ void UI::LoadFonts()
     icons_config.PixelSnapH           = true;
     icons_config.FontDataOwnedByAtlas = true;
 
-    if (!io.Fonts->AddFontFromFileTTF("Data\\SKSE\\Plugins\\imgui-skyrim\\fonts\\fa-solid-900.ttf", settings.font_size, &icons_config, icons_ranges)) {
+    if (!io.Fonts->AddFontFromFileTTF("Data\\SKSE\\Plugins\\catmenu\\fonts\\fa-solid-900.ttf", settings.font_size, &icons_config, icons_ranges)) {
         auto msg = std::format("Failed to load icon font at {}\nPlease verify the intergrity of mod files.", settings.font_path);
         logger::error("{}", msg);
         ImGui::InsertNotification({ImGuiToastType::Error, 5000, msg.c_str()});
@@ -357,7 +355,7 @@ void UI::Draw()
                     if (ImGui::MenuItem("Close"))
                         Toggle(false);
                     if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Close imgui-skyrim and resume game.");
+                        ImGui::SetTooltip("Close catmenu and resume game.");
 
                     ImGui::EndMenu();
                 }
@@ -380,7 +378,7 @@ void UI::Draw()
                     if (ImGui::MenuItem("Info")) {
                         auto ver = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
                         auto msg = std::format(
-                            "ImGui-Skyrim version {}.{}.{}.\n"
+                            "CatMenu version {}.{}.{}.\n"
                             "Programmed by FiveLimbedCat/ProfJack.",
                             ver.major(), ver.minor(), ver.patch());
                         ImGui::InsertNotification({ImGuiToastType::Info, 10000, msg.c_str()});
@@ -425,10 +423,7 @@ void UI::Draw()
                 }
         }
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);   // Disable round borders
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f); // Disable borders
-        ImGui::RenderNotifications();                             // <-- Here we render all notifications
-        ImGui::PopStyleVar(2);
+        ImGui::RenderNotifications(); // <-- Here we render all notifications
     }
 
     if (main_font)
@@ -444,7 +439,7 @@ void UI::DrawConfigWindow()
     ImGui::SetNextWindowPos({viewport->WorkSize.x * 0.1f, viewport->WorkSize.y * 0.2f}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({viewport->WorkSize.x * 0.3f, viewport->WorkSize.y * 0.5f}, ImGuiCond_FirstUseEver);
 
-    if (!ImGui::Begin("[ImGui-Skyrim] Configuration", &show_config)) {
+    if (!ImGui::Begin("[CatMenu] Configuration", &show_config)) {
         ImGui::End();
         return;
     }
@@ -528,7 +523,7 @@ void UI::DrawThemeEditor()
     ImGui::SetNextWindowPos({viewport->WorkSize.x * 0.5f, viewport->WorkSize.y * 0.2f}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({viewport->WorkSize.x * 0.3f, viewport->WorkSize.y * 0.5f}, ImGuiCond_FirstUseEver);
 
-    if (!ImGui::Begin("[ImGui-Skyrim] Theme Editor", &show_theme_editor)) {
+    if (!ImGui::Begin("[CatMenu] Theme Editor", &show_theme_editor)) {
         ImGui::End();
         return;
     }
@@ -559,7 +554,7 @@ void UI::SaveSettings()
     }
 
     nlohmann::json settings_json = settings;
-    o << settings_json;
+    o << settings_json.dump(4);
 
     // post
     auto msg = std::format("Successfully saved config file to {}", g_config_path);
@@ -597,6 +592,4 @@ void UI::LoadSettings()
     should_load_fonts = true;
     SetupTheme();
 }
-
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

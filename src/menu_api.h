@@ -9,9 +9,7 @@
 
 #define DLL_EXPORT __declspec(dllexport)
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
 enum class APIResult : uint8_t
@@ -26,5 +24,4 @@ DLL_EXPORT APIResult     RegisterOverlayDrawFunc(const RE::BSString& name, bool 
 DLL_EXPORT APIResult     RegisterMenuDrawFunc(const RE::BSString& name, bool (*func)());
 DLL_EXPORT void          InsertNotification(const ImGuiToast& toast);
 
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

@@ -2,9 +2,7 @@
 
 #include <Windows.h>
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
 struct WndProcHook
@@ -27,6 +25,4 @@ struct D3DInitHook
 
     static inline std::atomic<bool> initialized = false;
 };
-
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

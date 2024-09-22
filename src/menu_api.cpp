@@ -1,13 +1,12 @@
-#include "imgui_skyrim.h"
+#include "menu_api.h"
 
 #include "ui.h"
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
-ImGuiContext* GetContext()
+ImGuiContext*
+GetContext()
 {
     return ImGui::GetCurrentContext();
 }
@@ -26,6 +25,4 @@ void InsertNotification(const ImGuiToast& toast)
 {
     ImGui::InsertNotification(toast);
 }
-
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

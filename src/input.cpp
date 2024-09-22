@@ -6,9 +6,7 @@
 #include <WinUser.h>
 #include <dinput.h>
 
-namespace ImGui
-{
-namespace Skyrim
+namespace CatMenu
 {
 
 ImGuiKey last_key_pressed = ImGuiKey_None;
@@ -376,6 +374,4 @@ ImGuiKey GetLastKeyPressed()
 {
     return last_key_pressed;
 }
-
-} // namespace Skyrim
-} // namespace ImGui
+} // namespace CatMenu

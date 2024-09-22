@@ -31,9 +31,9 @@ void ProcessMessage(SKSE::MessagingInterface::Message* a_msg)
     switch (a_msg->type) {
         case SKSE::MessagingInterface::kDataLoaded:
             logger::info("Game: data loaded.");
-            stl::write_thunk_call<ImGui::Skyrim::hk_PollInputDevices>(REL::RelocationID(67315, 68617).address() + REL::Relocate(0x7B, 0x7B, 0x81));
+            stl::write_thunk_call<CatMenu::hk_PollInputDevices>(REL::RelocationID(67315, 68617).address() + REL::Relocate(0x7B, 0x7B, 0x81));
             logger::info("hk_PollInputDevices hooked.");
-            ImGui::Skyrim::UI::GetSingleton()->RegisterMenuDrawFunc("Demo Window", []() { ImGui::ShowDemoWindow(); return true; });
+            CatMenu::UI::GetSingleton()->RegisterMenuDrawFunc("Demo Window", []() { ImGui::ShowDemoWindow(); return true; });
             break;
         default:
             break;
@@ -49,7 +49,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 
     SKSE::Init(a_skse);
 
-    ImGui::Skyrim::D3DInitHook::install();
+    CatMenu::D3DInitHook::install();
 
     auto messaging = SKSE::GetMessagingInterface();
     if (!messaging->RegisterListener("SKSE", ProcessMessage))

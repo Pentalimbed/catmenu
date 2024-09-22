@@ -5,7 +5,7 @@ set_xmakever("2.8.2")
 includes("lib/commonlibsse-ng")
 
 -- set project
-set_project("imgui-skyrim")
+set_project("catmenu")
 set_version("1.0.0")
 set_license("MIT")
 
@@ -59,7 +59,7 @@ target("imgui")
 
 
 -- targets
-target("imgui-skyrim")
+target("catmenu")
     set_kind("shared")
 
     add_cxxflags(
@@ -80,7 +80,7 @@ target("imgui-skyrim")
 
     -- add commonlibsse-ng plugin
     add_rules("commonlibsse-ng.plugin", {
-        name = "imgui-skyrim",
+        name = "CatMenu",
         author = "FiveLimbedCat",
         description = "Unified imgui backend for skyrim."
     })
