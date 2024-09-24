@@ -10,6 +10,12 @@
 #include <imgui_stdlib.h>
 #include <ImGuiNotify.hpp>
 
+constexpr auto g_cat_str = R"(
+ /\_/\
+( o.o )
+ > ^ <
+)"sv.substr(1);
+
 namespace nlohmann
 {
 
@@ -308,6 +314,8 @@ void UI::LoadFonts()
 
 void UI::Draw()
 {
+    InputHandler::GetSingleton()->ProcessEvents();
+
     if (should_load_fonts)
         LoadFonts();
 
@@ -377,7 +385,8 @@ void UI::Draw()
                 if (ImGui::BeginMenu("About")) {
                     if (ImGui::MenuItem("Info")) {
                         auto ver = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
-                        auto msg = std::format("CatMenu version {}.\nProgrammed by FiveLimbedCat/ProfJack.", ver);
+
+                        auto msg = std::format("{}CatMenu version {}.\nProgrammed by FiveLimbedCat/ProfJack.", g_cat_str, ver);
                         ImGui::InsertNotification({ImGuiToastType::Info, 10000, msg.c_str()});
                     }
                     ImGui::EndMenu();
@@ -446,7 +455,7 @@ void UI::DrawConfigWindow()
     ImGui::InputTextWithHint("Toggle Button", "Click to set keyboard shortcut", &key_name,
                              ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_NoUndoRedo | ImGuiInputTextFlags_NoHorizontalScroll);
     if (ImGui::IsItemActive()) {
-        const auto last_key_pressed = GetLastKeyPressed();
+        const auto last_key_pressed = InputHandler::GetSingleton()->GetLastKeyPressed();
         if (last_key_pressed != ImGuiKey_None) {
             settings.toggle_key = last_key_pressed;
             ImGui::ClearActiveID();

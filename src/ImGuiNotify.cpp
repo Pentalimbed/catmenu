@@ -85,7 +85,7 @@ void RenderNotifications()
 
         // Remove toast if expired
         if (currentToast->getPhase() == ImGuiToastPhase::Expired) {
-            RemoveNotification(i);
+            notifications.erase(notifications.begin() + i);
             continue;
         }
 
@@ -193,7 +193,7 @@ void RenderNotifications()
 
                 // If the button is pressed, we want to remove the notification
                 if (Button(ICON_FA_XMARK)) {
-                    RemoveNotification(i);
+                    notifications.erase(notifications.begin() + i);
                 }
             }
 

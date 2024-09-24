@@ -11,8 +11,6 @@
 namespace CatMenu
 {
 
-ImGuiKey last_key_pressed = ImGuiKey_None;
-
 const ImGuiKey VirtualKeyToImGuiKey(WPARAM vkKey)
 {
     switch (vkKey) {
@@ -292,75 +290,41 @@ const uint32_t DIKToVK(uint32_t DIK)
 }
 
 
-void BSInputDeviceManager_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatcher, RE::InputEvent* const* a_events)
+void InputHandler::BSInputDeviceManager_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEvent*>* a_dispatcher, RE::InputEvent* const* a_events)
 {
-    bool blockInput = true;
+    auto& queue_mutex = InputHandler::GetSingleton()->event_queue_mutex;
+    auto& queue       = InputHandler::GetSingleton()->event_queue;
+    bool  blockInput  = true;
 
     if (a_events) {
-        last_key_pressed = ImGuiKey_None;
-
-        ImGuiIO& io = ImGui::GetIO();
 
         for (auto event = *a_events; event; event = event->next) {
             auto event_type = event->GetEventType();
 
             if (event_type == RE::INPUT_EVENT_TYPE::kChar) {
-                io.AddInputCharacter(event->AsCharEvent()->keyCode);
+                std::lock_guard lock{queue_mutex};
+                queue.push_back(KeyEvent{event->AsCharEvent()});
             } else if (event_type == RE::INPUT_EVENT_TYPE::kButton) {
-                const auto button = event->AsButtonEvent();
-                if (button->IsPressed() && !button->IsDown())
-                    continue;
-
-                auto device  = button->device.get();
-                auto keyCode = button->GetIDCode();
-
-                if (device == RE::INPUT_DEVICE::kMouse) {
-                    if (keyCode > 7) // middle scroll
-                        io.AddMouseWheelEvent(0, button->Value() * (keyCode == 8 ? 1 : -1));
-                    else {
-                        if (keyCode > 5)
-                            keyCode = 5;
-                        io.AddMouseButtonEvent(keyCode, button->IsPressed());
-                    }
-                } else if (device == RE::INPUT_DEVICE::kKeyboard) {
-                    uint32_t key = DIKToVK(keyCode);
-                    if (key == keyCode)
-                        key = MapVirtualKeyEx(keyCode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
-
-                    auto imgui_key = VirtualKeyToImGuiKey(key);
-                    io.AddKeyEvent(imgui_key, button->IsPressed());
-
-                    if (key == VK_LCONTROL || key == VK_RCONTROL) {
-                        io.AddKeyEvent(ImGuiMod_Ctrl, button->IsPressed());
-                    } else if (key == VK_LSHIFT || key == VK_RSHIFT) {
-                        io.AddKeyEvent(ImGuiMod_Shift, button->IsPressed());
-                    } else if (key == VK_LMENU || key == VK_RMENU) {
-                        io.AddKeyEvent(ImGuiMod_Alt, button->IsPressed());
-                    } else {
-                        int mod_key = imgui_key;
-                        if (ImGui::IsKeyDown(ImGuiKey_ModCtrl))
-                            mod_key = mod_key | ImGuiMod_Ctrl;
-                        if (ImGui::IsKeyDown(ImGuiMod_Shift))
-                            mod_key = mod_key | ImGuiMod_Shift;
-                        if (ImGui::IsKeyDown(ImGuiMod_Alt))
-                            mod_key = mod_key | ImGuiMod_Alt;
-                        last_key_pressed = ImGuiKey{mod_key};
-                    }
-                } else {
-                    blockInput = device == RE::INPUT_DEVICES::INPUT_DEVICE::kGamepad;
-#ifdef ENABLE_SKYRIM_VR
-                    blockInput = blockInput ||
-                        (REL::Module::IsVR() &&
-                         ((device == RE::INPUT_DEVICES::INPUT_DEVICE::kVivePrimary) ||
-                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kViveSecondary) ||
-                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kOculusPrimary) ||
-                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kOculusSecondary) ||
-                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kWMRPrimary) ||
-                          (device == RE::INPUT_DEVICES::INPUT_DEVICE::kWMRSecondary)));
-#endif
-                    blockInput = !blockInput;
-                }
+                std::lock_guard lock{queue_mutex};
+                queue.push_back(KeyEvent{event->AsButtonEvent()});
             }
+        }
+
+        if (*a_events) {
+            auto device = (*a_events)->GetDevice();
+
+            blockInput = device == RE::INPUT_DEVICES::INPUT_DEVICE::kGamepad;
+#ifdef ENABLE_SKYRIM_VR
+            blockInput = blockInput ||
+                (REL::Module::IsVR() &&
+                 ((device == RE::INPUT_DEVICES::INPUT_DEVICE::kVivePrimary) ||
+                  (device == RE::INPUT_DEVICES::INPUT_DEVICE::kViveSecondary) ||
+                  (device == RE::INPUT_DEVICES::INPUT_DEVICE::kOculusPrimary) ||
+                  (device == RE::INPUT_DEVICES::INPUT_DEVICE::kOculusSecondary) ||
+                  (device == RE::INPUT_DEVICES::INPUT_DEVICE::kWMRPrimary) ||
+                  (device == RE::INPUT_DEVICES::INPUT_DEVICE::kWMRSecondary)));
+#endif
+            blockInput = !blockInput;
         }
     }
 
@@ -370,9 +334,57 @@ void BSInputDeviceManager_PollInputDevices::thunk(RE::BSTEventSource<RE::InputEv
     return;
 }
 
-ImGuiKey GetLastKeyPressed()
+void InputHandler::ProcessEvents()
 {
-    return last_key_pressed;
+    std::lock_guard lock{event_queue_mutex};
+
+    last_key_pressed = ImGuiKey_None;
+    ImGuiIO& io      = ImGui::GetIO();
+
+    for (auto event : event_queue) {
+        if (event.type == RE::INPUT_EVENT_TYPE::kChar) {
+            io.AddInputCharacter(event.id_code);
+        } else if (event.type == RE::INPUT_EVENT_TYPE::kButton) {
+            if (event.IsPressed() && !event.IsDown())
+                continue;
+
+            if (event.device == RE::INPUT_DEVICE::kMouse) {
+                if (event.id_code > 7) // middle scroll
+                    io.AddMouseWheelEvent(0, event.value * (event.id_code == 8 ? 1 : -1));
+                else {
+                    if (event.id_code > 5)
+                        event.id_code = 5;
+                    io.AddMouseButtonEvent(event.id_code, event.IsPressed());
+                }
+            } else if (event.device == RE::INPUT_DEVICE::kKeyboard) {
+                uint32_t key = DIKToVK(event.id_code);
+                if (key == event.id_code)
+                    key = MapVirtualKeyEx(event.id_code, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
+
+                auto imgui_key = VirtualKeyToImGuiKey(key);
+                io.AddKeyEvent(imgui_key, event.IsPressed());
+
+                if (key == VK_LCONTROL || key == VK_RCONTROL) {
+                    io.AddKeyEvent(ImGuiMod_Ctrl, event.IsPressed());
+                } else if (key == VK_LSHIFT || key == VK_RSHIFT) {
+                    io.AddKeyEvent(ImGuiMod_Shift, event.IsPressed());
+                } else if (key == VK_LMENU || key == VK_RMENU) {
+                    io.AddKeyEvent(ImGuiMod_Alt, event.IsPressed());
+                } else {
+                    int mod_key = imgui_key;
+                    if (ImGui::IsKeyDown(ImGuiKey_ModCtrl))
+                        mod_key = mod_key | ImGuiMod_Ctrl;
+                    if (ImGui::IsKeyDown(ImGuiMod_Shift))
+                        mod_key = mod_key | ImGuiMod_Shift;
+                    if (ImGui::IsKeyDown(ImGuiMod_Alt))
+                        mod_key = mod_key | ImGuiMod_Alt;
+                    last_key_pressed = ImGuiKey{mod_key};
+                }
+            }
+        }
+    }
+
+    event_queue.clear();
 }
 
 } // namespace CatMenu

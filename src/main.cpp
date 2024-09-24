@@ -31,7 +31,7 @@ void ProcessMessage(SKSE::MessagingInterface::Message* a_msg)
     switch (a_msg->type) {
         case SKSE::MessagingInterface::kPostPostLoad:
             logger::info("Game: data loaded.");
-            stl::write_thunk_call<CatMenu::BSInputDeviceManager_PollInputDevices>(REL::VariantID(67315, 68617, 0xC519E0).address() + REL::Relocate(0x7B, 0x7B, 0x81));
+            stl::write_thunk_call<CatMenu::InputHandler::BSInputDeviceManager_PollInputDevices>(REL::VariantID(67315, 68617, 0xC519E0).address() + REL::Relocate(0x7B, 0x7B, 0x81));
             logger::info("BSInputDeviceManager_PollInputDevices hooked.");
             break;
         default:
