@@ -157,6 +157,12 @@ void ImGui_ImplDX11_ReCreateFontsTexture()
     ImGui_ImplDX11_CreateFontsTexture();
 }
 
+
+
+
+
+
+
 namespace CatMenu
 {
 
@@ -386,7 +392,8 @@ void UI::Draw()
                     if (ImGui::MenuItem("Info")) {
                         auto ver = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
 
-                        auto msg = std::format("{}CatMenu version {}.\nProgrammed by FiveLimbedCat/ProfJack.", g_cat_str, ver);
+                        auto msg = std::format("{}CatMenu version {}.\nProgrammed by FiveLimbedCat/ProfJack.\nPress {} to open the menu",
+                                               g_cat_str, ver, KeyToString(ImGuiKey{settings.toggle_key}));
                         ImGui::InsertNotification({ImGuiToastType::Info, 10000, msg.c_str()});
                     }
                     ImGui::EndMenu();
